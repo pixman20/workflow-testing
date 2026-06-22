@@ -52,10 +52,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RUN_ID=$(gh run list --workflow build.yml --branch main --status success \
-            --limit 1 --json databaseId --jq '.[0].databaseId')
+          RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml \
+            --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
           echo "Downloading npm-build artifact from build run $RUN_ID"
-          gh run download "$RUN_ID" --name npm-build
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name npm-build
           unzip npm-build.zip
           gh api "repos/${GITHUB_REPOSITORY}/contents/package.json?ref=main" \
             --jq '.content' | base64 -d > package.json
