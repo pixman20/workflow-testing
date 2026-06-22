@@ -1,7 +1,13 @@
 name: Publish Npm Package
+run-name: ${{ inputs.stage_only && 'Stage publish' || 'Publish' }}
 
 on:
   workflow_dispatch:
+    inputs:
+      stage_only:
+        description: "Stage only (run 'npm stage publish' instead of 'npm publish')"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -42,4 +48,9 @@ jobs:
           npm --version
 
       - name: Publish to NPM
+        if: ${{ !inputs.stage_only }}
         run: npm publish --access public
+
+      - name: Stage publish to NPM
+        if: ${{ inputs.stage_only }}
+        run: npm stage publish
