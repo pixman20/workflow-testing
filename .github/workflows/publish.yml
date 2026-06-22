@@ -44,7 +44,7 @@ jobs:
 
       - name: Install NPM
         run: |
-          npm install -g npm@latest # npm 11.5.1 or later is required to publish w/ OIDC
+          npm install -g npm@11.16.0 # pinned to match deploy's 2026.5.0 run (pre auto-provenance rollout)
           npm --version
 
       - name: Publish to NPM
