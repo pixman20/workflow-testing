@@ -1,0 +1,50 @@
+name: Build Npm Package
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Get Node version
+        id: retrieve-node-version
+        run: |
+          NODE_NVMRC=$(cat .nvmrc)
+          NODE_VERSION=${NODE_NVMRC/v/''}
+          echo "node_version=$NODE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
+
+      # Emulate clients' build-cli.yml: produce a build/ directory of compiled
+      # output. Deliberately does NOT include README.md or .git — those only
+      # exist in a checkout, which the publish side won't have.
+      - name: Build package
+        run: |
+          mkdir -p build
+          echo "console.log('built artifact from ${GITHUB_SHA}');" > build/index.js
+
+      # Mirror clients packaging the build into a single <name>-npm-build.zip
+      # release asset. The zip contains only build/, not package.json.
+      - name: Package npm build
+        run: zip -r npm-build.zip build
+
+      - name: Upload npm build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-build
+          path: npm-build.zip

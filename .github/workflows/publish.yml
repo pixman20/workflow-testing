@@ -21,17 +21,21 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: read # required for `gh run download`
 
     steps:
-      - name: Check out repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
+      # No checkout — emulate deploy: read metadata via the API and pull the
+      # prebuilt artifact, so the publish dir has no README.md and no .git.
       - name: Get Node version
         id: retrieve-node-version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NODE_NVMRC=$(cat .nvmrc)
-          NODE_VERSION=${NODE_NVMRC/v/''}
-          echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+          NODE_NVMRC=$(gh api "repos/${GITHUB_REPOSITORY}/contents/.nvmrc?ref=main" \
+            --jq '.content' | base64 -d)
+          NODE_VERSION="${NODE_NVMRC#v}"
+          NODE_VERSION="${NODE_VERSION//[$'\r\n']/}"
+          echo "node_version=$NODE_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -39,13 +43,22 @@ jobs:
           node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
           registry-url: "https://registry.npmjs.org/"
 
-      - name: Install Husky
-        run: npm install -g husky
-
       - name: Install NPM
         run: |
           npm install -g npm@11.16.0 # pinned to match deploy's 2026.5.0 run (pre auto-provenance rollout)
           npm --version
+
+      - name: Download and unpack npm build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID=$(gh run list --workflow build.yml --branch main --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "Downloading npm-build artifact from build run $RUN_ID"
+          gh run download "$RUN_ID" --name npm-build
+          unzip npm-build.zip
+          gh api "repos/${GITHUB_REPOSITORY}/contents/package.json?ref=main" \
+            --jq '.content' | base64 -d > package.json
 
       - name: Publish to NPM
         if: ${{ !inputs.stage_only }}
