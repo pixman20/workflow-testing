@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write # required for Sigstore signing of the provenance statement
 
 jobs:
   build:
@@ -31,21 +32,34 @@ jobs:
         with:
           node-version: ${{ steps.retrieve-node-version.outputs.node_version }}
 
-      # Emulate clients' build-cli.yml: produce a build/ directory of compiled
-      # output. Deliberately does NOT include README.md or .git — those only
-      # exist in a checkout, which the publish side won't have.
       - name: Build package
         run: |
           mkdir -p build
           echo "console.log('built artifact from ${GITHUB_SHA}');" > build/index.js
 
-      # Mirror clients packaging the build into a single <name>-npm-build.zip
-      # release asset. The zip contains only build/, not package.json.
-      - name: Package npm build
-        run: zip -r npm-build.zip build
+      # Pack the FINAL npm tarball here in the build repo (README.md + package.json
+      # present, so contents are correct). It will be published verbatim from the
+      # deploy repo — the provenance subject is this tarball's sha-512, so it must
+      # NOT be repacked downstream.
+      - name: Pack npm tarball
+        id: pack
+        run: |
+          TARBALL=$(npm pack --json | jq -r '.[0].filename')
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "Packed: $TARBALL"
 
-      - name: Upload npm build artifact
+      # Generate a SLSA provenance statement bound to the tarball, then
+      # Sigstore-sign it under THIS repo's OIDC identity (the build/source repo).
+      - name: Generate provenance statement
+        run: npx --yes @npmcli/provenance-cli generate "${{ steps.pack.outputs.tarball }}" -o provenance-statement.json
+
+      - name: Sign provenance statement
+        run: npx --yes @sigstore/cli attest ./provenance-statement.json -o provenance.sigstore.json
+
+      - name: Upload publish bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: npm-build
-          path: npm-build.zip
+          name: npm-publish-bundle
+          path: |
+            ${{ steps.pack.outputs.tarball }}
+            provenance.sigstore.json

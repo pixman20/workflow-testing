@@ -1,11 +1,11 @@
 {
     "name": "@apixley_bw/gh_oidc_testing",
-    "version": "0.0.22",
+    "version": "0.0.23",
     "description": "Testing npm publish",
     "main": "index.js",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/pixman20/gh-workflows.git"
+        "url": "git+https://github.com/pixman20/workflow-testing.git"
     },
     "scripts": {
         "test": "echo \"No tests specified\" && exit 0"
