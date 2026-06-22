@@ -1,6 +1,6 @@
 {
     "name": "@apixley_bw/gh_oidc_testing",
-    "version": "0.0.23",
+    "version": "0.0.24",
     "description": "Testing npm publish",
     "main": "index.js",
     "repository": {
