@@ -1,4 +1,4 @@
-name: Publish Npm Package
+name: Stage Publish Npm Package
 
 on:
   workflow_dispatch:
@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  Publish:
-    name: Publish
+  Stage:
+    name: Stage
     environment: NPM
     runs-on: ubuntu-24.04
     permissions:
@@ -41,5 +41,5 @@ jobs:
           npm install -g npm@latest # npm 11.5.1 or later is required to publish w/ OIDC
           npm --version
 
-      - name: Publish to NPM
-        run: npm publish --access public
+      - name: Stage publish to NPM
+        run: npm stage publish
